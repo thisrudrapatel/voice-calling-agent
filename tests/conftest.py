@@ -56,8 +56,8 @@ def speech_pcm() -> bytes:
 
 @pytest.fixture
 def settings() -> Settings:
-    s = Settings()
-    s.data_dir = ROOT / "data"
+    """The small Acme Fiber demo profile: stable facts for pipeline tests."""
+    s = Settings(profile="acme_fiber")
     s.greeting = "Hello."
     s.end_of_turn_ms = 400
     return s
@@ -65,7 +65,17 @@ def settings() -> Settings:
 
 @pytest.fixture(scope="session")
 def kb() -> KnowledgeBase:
-    return KnowledgeBase(ROOT / "data")
+    return KnowledgeBase(ROOT / "profiles" / "acme_fiber" / "knowledge")
+
+
+@pytest.fixture(scope="session")
+def uow_settings() -> Settings:
+    return Settings(profile="uow_india")
+
+
+@pytest.fixture(scope="session")
+def uow_kb(uow_settings) -> KnowledgeBase:
+    return KnowledgeBase(uow_settings.data_dir, synonyms=uow_settings.synonyms)
 
 
 def make_agent(settings, kb, stt, tts=None, llm=None) -> VoiceAgent:

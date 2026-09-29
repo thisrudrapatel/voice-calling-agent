@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from datetime import date
 from typing import AsyncIterator
 
 import httpx
@@ -21,17 +22,18 @@ from .knowledge import Chunk, tokenize
 
 log = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are {agent}, a friendly phone agent for {company}. You are on a live voice call.
+SYSTEM_PROMPT = """You are {agent}, a friendly phone agent for {company}. You are on a live voice call. Today's date is {today}.
 
 How to speak:
-- Reply in 1 to 3 short sentences, like a person on the phone. No lists, no markdown, no emojis, no URLs read out character by character.
-- Say numbers and prices the way people say them out loud.
+- Reply in 1 to 3 short sentences, like a person on the phone. No lists, no markdown, no emojis.
+- Say numbers and prices the way people say them out loud. Give a phone number, email or website only when it helps, and at most one per reply.
 - If the caller's question is vague, ask one short clarifying question.
 - If the caller says goodbye or thanks you and is done, say a brief goodbye.
 
 What you know:
-- Answer ONLY from the reference information below. If the answer is not there, say you don't have that information and offer to connect them with a human colleague. Never invent prices, dates, policies or phone numbers.
-
+- Answer ONLY from the reference information below. If the answer is not there, say you don't have that information and suggest {handoff}. Never invent prices, dates, policies, percentages or phone numbers.
+- Dates in the reference information that are before today have already happened; don't describe them as upcoming.
+{persona}
 Reference information:
 {context}"""
 
@@ -44,9 +46,19 @@ def build_messages(
     history: list[dict],
     agent: str,
     company: str,
+    persona: str = "",
+    handoff: str = "speaking with a member of our team",
+    today: str | None = None,
 ) -> list[dict]:
     ctx = "\n\n".join(f"[{c.source}] {c.text}" for c in context) or NO_CONTEXT
-    system = SYSTEM_PROMPT.format(agent=agent, company=company, context=ctx)
+    system = SYSTEM_PROMPT.format(
+        agent=agent,
+        company=company,
+        context=ctx,
+        handoff=handoff,
+        today=today or date.today().strftime("%d %B %Y"),
+        persona=f"\nYour role and extra rules:\n{persona}\n" if persona else "",
+    )
     return [{"role": "system", "content": system}, *history, {"role": "user", "content": question}]
 
 
@@ -125,11 +137,20 @@ class OllamaLLM:
 _GREETING = re.compile(r"^\W*(hi|hello|hey|good (morning|afternoon|evening))\b[\w\s,!.']{0,20}$", re.I)
 _THANKS = re.compile(r"\b(thanks?|thank you|bye|goodbye)\b", re.I)
 _PRICE_Q = re.compile(r"\b(how much|price|cost|fee|charge|pay)\b", re.I)
-_TIME_Q = re.compile(r"\b(when|how long|what time|hours|days)\b", re.I)
+_TIME_Q = re.compile(r"\b(when|how long|what time|hours|days|timings?|open|opening|duration)\b", re.I)
+_TIME_WORDS = re.compile(
+    r"\b(\d+\s?(am|pm)|hours?|days?|weeks?|months?|years?|trimesters?|monday|saturday|sunday|"
+    r"january|february|march|april|may|june|july|august|september|october|november|december)\b",
+    re.I,
+)
 
 
 class ExtractiveResponder:
     """No-LLM fallback: speak the sentences that best overlap the question."""
+
+    def __init__(self, handoff: str = "speaking with a member of our team", synonyms: dict[str, set[str]] | None = None):
+        self.handoff = handoff
+        self.synonyms = synonyms or {}
 
     @staticmethod
     def is_small_talk(question: str) -> bool:
@@ -142,14 +163,16 @@ class ExtractiveResponder:
             return "You're welcome! Thanks for calling, goodbye."
         q = set(tokenize(question))
         if not context or not q:
-            return "Sorry, I don't have information about that. Would you like me to connect you with a colleague?"
+            return f"Sorry, I don't have information about that. I'd suggest {self.handoff}."
+        related = {r for t in q for r in self.synonyms.get(t, ())} - q
         scored = []
         for rank, chunk in enumerate(context[:2]):
             for i, sent in enumerate(split_sentences(chunk.body)):
-                overlap = len(q & set(tokenize(sent)))
+                words = set(tokenize(sent))
+                overlap = len(q & words) + 0.5 * len(related & words)
                 if overlap and _PRICE_Q.search(question) and re.search(r"\d|dollar|free", sent, re.I):
                     overlap += 1.5
-                if overlap and _TIME_Q.search(question) and re.search(r"\d|day|hour|week|month", sent, re.I):
+                if overlap and _TIME_Q.search(question) and _TIME_WORDS.search(sent):
                     overlap += 1
                 if overlap:
                     # prefer the best chunk and earlier sentences on ties

@@ -190,10 +190,27 @@ class BM25:
         return out
 
 
+def build_synonym_map(groups: list[list[str]]) -> dict[str, set[str]]:
+    """["hostel", "accommodation"] -> {"hostel": {"accommodation"}, ...} on stemmed tokens."""
+    out: dict[str, set[str]] = {}
+    for group in groups:
+        tokens = {t for word in group for t in tokenize(word)}
+        for t in tokens:
+            out.setdefault(t, set()).update(tokens - {t})
+    return out
+
+
 class KnowledgeBase:
-    def __init__(self, data_dir: Path, ollama_url: str | None = None, embed_model: str | None = None):
+    def __init__(
+        self,
+        data_dir: Path,
+        ollama_url: str | None = None,
+        embed_model: str | None = None,
+        synonyms: list[list[str]] | None = None,
+    ):
         self.chunks = load_documents(data_dir)
         self.bm25 = BM25([tokenize(c.text) for c in self.chunks])
+        self.synonyms = build_synonym_map(synonyms or [])
         self.ollama_url = ollama_url
         self.embed_model = embed_model
         self.vectors: np.ndarray | None = None
@@ -220,7 +237,13 @@ class KnowledgeBase:
     def search(self, query: str, k: int = 4) -> list[Chunk]:
         if not self.chunks:
             return []
-        kw = self.bm25.scores(tokenize(query))
+        spoken = tokenize(query)
+        kw = self.bm25.scores(spoken)
+        # Callers say "hostel", documents say "accommodation": search both,
+        # but trust the words actually spoken more.
+        related = {r for t in spoken for r in self.synonyms.get(t, ())} - set(spoken)
+        if related:
+            kw = kw + 0.5 * self.bm25.scores(sorted(related))
         score = kw / kw.max() if kw.max() > 0 else kw
         if self.vectors is not None:
             q = self._embed([query])

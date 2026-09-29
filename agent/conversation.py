@@ -23,6 +23,7 @@ from .audio import SAMPLE_RATE
 from .config import Settings
 from .knowledge import KnowledgeBase, followup_query
 from .llm import ExtractiveResponder, OllamaLLM, build_messages, sentences_from_stream
+from .speech import speakable
 from .stt import STT, create_stt
 from .tts import TTS, create_tts
 from .vad import Endpointer
@@ -50,11 +51,11 @@ class VoiceAgent:
         llm: OllamaLLM | None = None,
     ):
         self.settings = settings
-        self.kb = kb or KnowledgeBase(settings.data_dir, settings.ollama_url, settings.embed_model)
-        self.stt = stt or create_stt(settings, hint=f"{settings.company_name}, {settings.agent_name}.")
+        self.kb = kb or KnowledgeBase(settings.data_dir, settings.ollama_url, settings.embed_model, settings.synonyms)
+        self.stt = stt or create_stt(settings, hint=settings.stt_hint)
         self.tts = tts or create_tts(settings)
         self.llm = llm if llm is not None else OllamaLLM(settings.ollama_url, settings.llm_model, settings.llm_temperature)
-        self.fallback = ExtractiveResponder()
+        self.fallback = ExtractiveResponder(settings.handoff, self.kb.synonyms)
         self.llm_ok = False
 
     async def check_llm(self) -> bool:
@@ -147,7 +148,9 @@ class CallSession:
     # --------------------------------------------------------------- output
 
     async def _speak(self, text: str) -> None:
-        pcm = await asyncio.to_thread(self.agent.tts.synthesize, text)
+        # The transcript shows the written text; the voice gets a spoken form
+        # ("+91 97734..." read digit by digit, "IELTS" as "eye elts", ...).
+        pcm = await asyncio.to_thread(self.agent.tts.synthesize, speakable(text, self.s.lexicon))
         if not pcm:
             return
         await self.send_event({"type": "transcript", "role": "agent", "text": text})
@@ -217,7 +220,9 @@ class CallSession:
         """Yield speakable sentences, from the LLM if possible."""
         a = self.agent
         if a.llm_ok:
-            msgs = build_messages(question, context, self.history, self.s.agent_name, self.s.company_name)
+            msgs = build_messages(
+                question, context, self.history, self.s.agent_name, self.s.company_name, self.s.persona, self.s.handoff
+            )
             said_something = False
             try:
                 async for sentence in sentences_from_stream(a.llm.stream(msgs)):
