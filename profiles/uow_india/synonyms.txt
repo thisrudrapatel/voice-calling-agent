@@ -1,0 +1,23 @@
+# Words callers use => words in the documents. Each line is one group;
+# a question containing any word in a group also searches for the others
+# (at lower weight than the words actually spoken).
+hostel, accommodation, housing, stay, room, rent, living, paying guest
+fee, fees, tuition, cost, price, charges, expensive, afford, payment, instalment, emi
+scholarship, discount, waiver, concession, merit, financial aid
+eligibility, eligible, requirement, criteria, qualify, qualification, percentage, marks, score
+admission, admissions, apply, application, enrol, enrolment, join, register
+course, courses, program, programme, degree
+intake, start, begin, commence, session, trimester, batch, deadline
+placement, placements, job, jobs, career, salary, recruit, internship, company, companies, employer
+location, address, campus, located, direction, situated
+timing, timings, time, hours, open, opening, closing
+contact, phone, number, email, whatsapp, talk, speak, advisor, counsellor
+english, ielts, toefl, pte, language
+bachelor, undergraduate, ug, graduation, twelfth, school
+master, masters, postgraduate, pg
+ai, artificial, intelligence, machine, learning
+data, analytics, science
+fintech, financial, technology, finance, banking
+recognition, recognised, recognized, valid, approved, ugc, equivalent, accredited
+visa, foreign, international, nri
+part-time, parttime, working, professional, weekend, evening

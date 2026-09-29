@@ -1,0 +1,7 @@
+{
+  "agent_name": "Maya",
+  "company_name": "the University of Wollongong in India",
+  "greeting": "Hello, and thank you for calling the University of Wollongong in India. I'm Maya, a virtual assistant. I can help with courses, admissions, scholarships, fees and campus life. What would you like to know?",
+  "handoff": "speaking with the admissions team on WhatsApp at +91 97734 43748, or by email at UOWI-Admit@uow.edu.au",
+  "stt_hint": "University of Wollongong, UOW India, GIFT City, Gandhinagar, Gujarat, FinTech, Master of Financial Technology, Master of Computing, Data Analytics, Applied Artificial Intelligence, Graduate Certificate, Bachelor of Business, IELTS, TOEFL, scholarship, trimester, hostel, accommodation."
+}

@@ -1,0 +1,7 @@
+{
+  "agent_name": "Ava",
+  "company_name": "Acme Fiber",
+  "greeting": "Hi, thanks for calling Acme Fiber. This is Ava. How can I help you today?",
+  "handoff": "calling our support team at 555-0100",
+  "stt_hint": "Acme Fiber, Basic plan, Plus plan, Pro plan, router, autopay."
+}

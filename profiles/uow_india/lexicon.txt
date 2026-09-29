@@ -1,0 +1,21 @@
+# How words should be pronounced by the voice. One rule per line:  written => spoken
+# Applied only to what the agent says, not to the on-screen transcript.
+# Matching is case-sensitive and whole-word; longer phrases win.
+GIFT City => Gift City
+GIFT SEZ => Gift S E Z
+UOW India => U O W India
+UOW => U O W
+FinTech => Fin Tech
+IELTS => eye elts
+TOEFL iBT => toe full I B T
+TOEFL => toe full
+OET => O E T
+PTE => P T E
+GPA => G P A
+WAM => average mark
+MBA => M B A
+CAT => cat
+JEE => J E E
+AI => A I
+Wollongong => Wool on gong
+IST => India Standard Time
