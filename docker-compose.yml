@@ -1,0 +1,9 @@
+# Optional: real phone calls. Starts Asterisk (free PBX) which answers SIP
+# calls from any softphone and bridges them to the agent over AudioSocket.
+#   docker compose up -d asterisk
+# then run the agent on the host:  python -m server.app
+services:
+  asterisk:
+    build: telephony/asterisk
+    network_mode: host          # SIP + RTP need real ports; simplest on Linux
+    restart: unless-stopped
